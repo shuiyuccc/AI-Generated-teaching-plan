@@ -3,216 +3,138 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>API 配置 - 教案生成系统</title>
+  <title>大模型配置 - 教案生成系统</title>
   <style>
     :root {
-      --apple-blue: #007aff;
-      --apple-green: #34c759;
-      --apple-red: #ff3b30;
-      --apple-orange: #ff9500;
-      --apple-gray: #86868b;
-      --apple-gray-2: #6e6e73;
-      --apple-gray-3: #48484a;
-      --apple-bg: #ffffff;
-      --apple-bg-secondary: #f5f5f7;
-      --apple-border: rgba(0,0,0,.08);
-      --apple-shadow: 0 2px 8px rgba(0,0,0,.08);
-      --apple-radius-lg: 20px;
-      --apple-radius: 12px;
-      --apple-transition: all .2s ease;
+      --apple-blue: #007aff; --apple-green: #34c759; --apple-red: #ff3b30;
+      --apple-orange: #ff9500; --apple-gray: #86868b; --apple-gray-2: #6e6e73;
+      --apple-gray-3: #48484a; --apple-bg: #ffffff; --apple-bg-secondary: #f5f5f7;
+      --apple-border: rgba(0,0,0,.08); --apple-shadow: 0 2px 8px rgba(0,0,0,.08);
+      --apple-radius-lg: 20px; --apple-radius: 12px; --apple-transition: all .2s ease;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', sans-serif;
-      background: var(--apple-bg-secondary);
-      color: var(--apple-gray-3);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
+      background: var(--apple-bg-secondary); color: var(--apple-gray-3);
+      min-height: 100vh; padding: 24px;
     }
-    .container {
-      width: 100%;
-      max-width: 640px;
-    }
-    .header {
-      text-align: center;
-      margin-bottom: 32px;
-    }
+    .container { width: 100%; max-width: 680px; margin: 0 auto; }
+    .header { text-align: center; margin-bottom: 28px; }
     .header .icon {
-      width: 56px;
-      height: 56px;
-      background: linear-gradient(135deg, var(--apple-blue), #5856d6);
-      border-radius: 14px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 16px;
+      width: 48px; height: 48px; background: linear-gradient(135deg, var(--apple-blue), #5856d6);
+      border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;
     }
-    .header .icon svg { width: 28px; height: 28px; color: #fff; }
-    .header h1 { font-size: 24px; font-weight: 600; letter-spacing: -.4px; }
-    .header p { font-size: 14px; color: var(--apple-gray); margin-top: 6px; }
+    .header .icon svg { width: 24px; height: 24px; color: #fff; }
+    .header h1 { font-size: 22px; font-weight: 600; letter-spacing: -.3px; }
+    .header p { font-size: 13px; color: var(--apple-gray); margin-top: 4px; }
     .card {
-      background: var(--apple-bg);
-      border-radius: var(--apple-radius-lg);
-      box-shadow: var(--apple-shadow);
-      overflow: hidden;
-      margin-bottom: 20px;
+      background: var(--apple-bg); border-radius: var(--apple-radius-lg);
+      box-shadow: var(--apple-shadow); overflow: hidden; margin-bottom: 16px;
     }
     .card-header {
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--apple-border);
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      padding: 16px 20px; border-bottom: 1px solid var(--apple-border);
+      display: flex; align-items: center; gap: 10px;
     }
-    .card-header h2 { font-size: 17px; font-weight: 600; }
-    .card-body { padding: 24px; }
-    .model-selector {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 24px;
+    .card-header h2 { font-size: 16px; font-weight: 600; }
+    .card-body { padding: 20px; }
+
+    /* 状态标签 */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; margin-left: auto;
     }
-    .model-option {
-      flex: 1;
-      padding: 16px;
-      border: 2px solid var(--apple-border);
-      border-radius: var(--apple-radius);
-      cursor: pointer;
-      text-align: center;
-      transition: var(--apple-transition);
+    .status-badge.ok { background: #34c75920; color: var(--apple-green); }
+    .status-badge.no { background: #ff950020; color: var(--apple-orange); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .status-badge.ok .status-dot { background: var(--apple-green); }
+    .status-badge.no .status-dot { background: var(--apple-orange); }
+
+    /* 预设卡片网格 */
+    .preset-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;
     }
-    .model-option:hover { border-color: var(--apple-gray); }
-    .model-option.active {
-      border-color: var(--apple-blue);
-      background: #007aff08;
+    .preset-card {
+      padding: 12px; border: 1.5px solid var(--apple-border); border-radius: var(--apple-radius);
+      cursor: pointer; text-align: center; transition: var(--apple-transition); position: relative;
     }
-    .model-option .model-name { font-size: 16px; font-weight: 600; color: var(--apple-gray-3); }
-    .model-option .model-desc { font-size: 12px; color: var(--apple-gray); margin-top: 4px; }
-    .model-option .check {
-      display: none;
-      width: 22px; height: 22px;
-      background: var(--apple-blue);
-      border-radius: 50%;
-      margin: 8px auto 0;
-      align-items: center;
-      justify-content: center;
+    .preset-card:hover { border-color: var(--apple-gray); }
+    .preset-card.active { border-color: var(--apple-blue); background: #007aff08; }
+    .preset-card .preset-name { font-size: 14px; font-weight: 600; color: var(--apple-gray-3); }
+    .preset-card .preset-desc { font-size: 11px; color: var(--apple-gray); margin-top: 3px; line-height: 1.3; }
+    .preset-card .check-mark {
+      display: none; position: absolute; top: 6px; right: 8px;
+      width: 18px; height: 18px; background: var(--apple-blue); border-radius: 50%;
+      align-items: center; justify-content: center;
     }
-    .model-option.active .check { display: inline-flex; }
-    .model-option .check svg { width: 12px; height: 12px; color: #fff; }
-    .form-group {
-      margin-bottom: 18px;
-    }
+    .preset-card.active .check-mark { display: inline-flex; }
+    .preset-card .check-mark svg { width: 10px; height: 10px; color: #fff; }
+    .preset-card.custom { border-style: dashed; }
+
+    /* 表单 */
+    .form-group { margin-bottom: 16px; }
     .form-group label {
-      display: block;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--apple-gray-2);
-      margin-bottom: 6px;
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 500; color: var(--apple-gray-2); margin-bottom: 5px;
     }
-    .form-group label .hint { font-weight: 400; color: var(--apple-gray); }
-    .form-group input {
-      width: 100%;
-      padding: 12px 16px;
-      background: var(--apple-bg-secondary);
-      border: 1px solid transparent;
-      border-radius: 10px;
-      font-size: 15px;
-      color: var(--apple-gray-3);
-      transition: var(--apple-transition);
-      font-family: inherit;
+    .form-group label .hint { font-weight: 400; color: var(--apple-gray); margin-left: auto; font-size: 11px; }
+    .form-group label .link { color: var(--apple-blue); text-decoration: none; font-weight: 400; margin-left: auto; font-size: 12px; }
+    .form-group label .link:hover { text-decoration: underline; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 11px 14px;
+      background: var(--apple-bg-secondary); border: 1px solid transparent;
+      border-radius: 10px; font-size: 15px; color: var(--apple-gray-3);
+      transition: var(--apple-transition); font-family: inherit;
     }
-    .form-group input:focus {
-      outline: none;
-      background: var(--apple-bg);
-      border-color: var(--apple-blue);
-      box-shadow: 0 0 0 3px rgba(0,122,255,.15);
+    .form-group input:focus, .form-group select:focus {
+      outline: none; background: var(--apple-bg);
+      border-color: var(--apple-blue); box-shadow: 0 0 0 3px rgba(0,122,255,.15);
     }
     .form-group input::placeholder { color: var(--apple-gray); }
-    .btn-row {
-      display: flex;
-      gap: 12px;
-      margin-top: 8px;
-    }
+    .form-group select { cursor: pointer; appearance: none; }
+
+    /* 按钮 */
+    .btn-row { display: flex; gap: 10px; margin-top: 20px; }
     .btn {
-      flex: 1;
-      padding: 14px 24px;
-      border-radius: 980px;
-      font-size: 15px;
-      font-weight: 500;
-      cursor: pointer;
-      border: none;
-      transition: var(--apple-transition);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      font-family: inherit;
+      flex: 1; padding: 13px 20px; border-radius: 980px;
+      font-size: 15px; font-weight: 500; cursor: pointer; border: none;
+      transition: var(--apple-transition); font-family: inherit;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
     }
-    .btn-primary {
-      background: var(--apple-blue);
-      color: #fff;
-    }
+    .btn-primary { background: var(--apple-blue); color: #fff; }
     .btn-primary:hover { background: #0066d6; }
     .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
-    .btn-secondary {
-      background: var(--apple-bg-secondary);
-      color: var(--apple-gray-2);
-    }
+    .btn-secondary { background: var(--apple-bg-secondary); color: var(--apple-gray-2); }
     .btn-secondary:hover { background: #e8e8ed; }
+    .btn-test { background: transparent; color: var(--apple-green); border: 1px solid var(--apple-green); }
+    .btn-test:hover { background: var(--apple-green); color: #fff; }
+
+    /* Toast */
     .toast {
-      position: fixed;
-      top: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 14px 24px;
-      border-radius: 12px;
-      font-size: 14px;
-      font-weight: 500;
-      z-index: 999;
-      opacity: 0;
-      transition: opacity .3s ease;
-      pointer-events: none;
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 500;
+      z-index: 999; opacity: 0; transition: opacity .3s ease; pointer-events: none;
     }
     .toast.show { opacity: 1; }
     .toast.success { background: #34c759; color: #fff; }
     .toast.error { background: var(--apple-red); color: #fff; }
     .toast.info { background: var(--apple-gray-3); color: #fff; }
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 500;
-    }
-    .status-badge.configured { background: #34c75920; color: var(--apple-green); }
-    .status-badge.not-configured { background: #ff950020; color: var(--apple-orange); }
-    .status-dot { width: 7px; height: 7px; border-radius: 50%; }
-    .status-badge.configured .status-dot { background: var(--apple-green); }
-    .status-badge.not-configured .status-dot { background: var(--apple-orange); }
-    .back-link {
-      text-align: center;
-      margin-top: 8px;
-    }
-    .back-link a {
-      color: var(--apple-blue);
-      text-decoration: none;
-      font-size: 14px;
-    }
-    .back-link a:hover { text-decoration: underline; }
+
+    /* 说明 */
     .info-box {
-      padding: 14px 18px;
-      background: #007aff0d;
-      border-radius: 10px;
-      font-size: 13px;
-      color: var(--apple-gray-2);
-      margin-top: 16px;
-      line-height: 1.6;
+      padding: 12px 16px; background: #007aff0d; border-radius: 10px;
+      font-size: 12px; color: var(--apple-gray-2); margin-top: 16px; line-height: 1.6;
     }
     .info-box strong { color: var(--apple-gray-3); }
+    .back-link { text-align: center; margin-top: 12px; }
+    .back-link a { color: var(--apple-blue); text-decoration: none; font-size: 14px; }
+    .back-link a:hover { text-decoration: underline; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 640px) {
+      .preset-grid { grid-template-columns: repeat(2, 1fr); }
+      .btn-row { flex-wrap: wrap; }
+      .btn { min-width: calc(50% - 5px); }
+    }
   </style>
 </head>
 <body>
@@ -220,163 +142,172 @@
     <div class="header">
       <div class="icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-          <path d="M2 17l10 5 10-5"/>
-          <path d="M2 12l10 5 10-5"/>
+          <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
         </svg>
       </div>
-      <h1>⚙️ 大模型 API 配置</h1>
-      <p>配置完成后即可开始生成教案</p>
+      <h1>⚙️ 大模型配置</h1>
+      <p>选择任一预置模型，或填写你自己的 API 信息</p>
     </div>
 
+    <!-- 预设模型选择 -->
     <div class="card">
       <div class="card-header">
-        <span id="statusBadge" class="status-badge not-configured">
-          <span class="status-dot"></span>
-          <span id="statusText">未配置</span>
+        <h2>📡 选择模型</h2>
+        <span id="statusBadge" class="status-badge no">
+          <span class="status-dot"></span><span id="statusText">未配置</span>
         </span>
-        <span style="margin-left:auto;font-size:14px;color:var(--apple-gray);" id="currentModel"></span>
       </div>
       <div class="card-body">
-        <!-- 模型选择 -->
-        <div class="model-selector">
-          <div class="model-option active" data-model="2" onclick="selectModel(2)">
-            <div class="model-name">🔮 DeepSeek V3</div>
-            <div class="model-desc">性价比高，推荐使用</div>
-            <div class="check">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
-          </div>
-          <div class="model-option" data-model="1" onclick="selectModel(1)">
-            <div class="model-name">🤖 MiniMax</div>
-            <div class="model-desc">MiniMax-M2.7 模型</div>
-            <div class="check">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
-          </div>
+        <div class="preset-grid" id="presetGrid">
+          <!-- JS动态生成 -->
         </div>
 
-        <!-- DeepSeek 配置 -->
-        <div id="deepseekConfig">
-          <div class="form-group">
-            <label>DeepSeek API Key <span class="hint">（<a href="https://platform.deepseek.com/api_keys" target="_blank" style="color:var(--apple-blue)">获取 Key</a>）</span></label>
-            <input type="password" id="deepseekApiKey" placeholder="sk-xxxxxxxxxxxxxxxx" autocomplete="off" />
-          </div>
-          <div class="form-group">
-            <label>API 地址 <span class="hint">（一般无需修改）</span></label>
-            <input type="text" id="deepseekApiUrl" placeholder="https://api.deepseek.com/v1/chat/completions" />
-          </div>
+        <div class="form-group">
+          <label>🔑 API Key <a class="link" id="keyLink" href="#" target="_blank">获取 Key →</a></label>
+          <input type="password" id="apiKey" placeholder="粘贴你的 API Key..." autocomplete="off" />
         </div>
 
-        <!-- MiniMax 配置（默认隐藏） -->
-        <div id="minimaxConfig" style="display:none;">
-          <div class="form-group">
-            <label>MiniMax API Key <span class="hint">（<a href="https://platform.minimaxi.com/user-center/basic-information/interface-key" target="_blank" style="color:var(--apple-blue)">获取 Key</a>）</span></label>
-            <input type="password" id="minimaxApiKey" placeholder="sk-cp-xxxxxxxxxxxxxxxx" autocomplete="off" />
-          </div>
-          <div class="form-group">
-            <label>API 地址 <span class="hint">（一般无需修改）</span></label>
-            <input type="text" id="minimaxApiUrl" placeholder="https://api.minimaxi.com/v1/chat/completions" />
-          </div>
+        <div class="form-group">
+          <label>🔗 API 地址</label>
+          <input type="text" id="apiUrl" placeholder="https://api.xxx.com/v1/chat/completions" />
+        </div>
+
+        <div class="form-group">
+          <label>🧠 模型名称</label>
+          <input type="text" id="model" placeholder="例如 deepseek-chat, gpt-4o, moonshot-v1-8k" />
         </div>
 
         <div class="btn-row">
           <button class="btn btn-primary" id="saveBtn" onclick="saveSettings()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             保存配置
           </button>
-          <button class="btn btn-secondary" onclick="location.href='/'">
-            返回首页
-          </button>
+          <button class="btn btn-secondary" onclick="location.href='/'">返回首页</button>
         </div>
 
         <div class="info-box">
-          <strong>💡 说明：</strong><br/>
-          • 请至少填写一个模型的 API Key<br/>
-          • API Key 保存在本地 <code>llm_settings.json</code> 文件中，不会上传到任何地方<br/>
-          • 如果不知道 API 地址，保持默认即可<br/>
-          • DeepSeek 注册即送免费额度，<strong>推荐使用</strong>
+          <strong>💡 支持任意兼容 OpenAI Chat Completions API 的大模型</strong><br/>
+          • 选择预置模型会自动填入 API 地址和模型名，你也可以手动修改<br/>
+          • API Key 保存在本地，不会上传到任何地方<br/>
+          • 兼容 DeepSeek、MiniMax、Kimi、通义千问、GLM、OpenAI 等
         </div>
       </div>
     </div>
 
-    <div class="back-link">
-      <a href="/">← 返回教案生成页面</a>
-    </div>
+    <div class="back-link"><a href="/">← 返回教案生成页面</a></div>
+    <div class="toast" id="toast"></div>
   </div>
 
-  <div class="toast" id="toast"></div>
-
   <script>
-    let selectedModel = 2;
+    // 预设模型数据（与后端 config.py 保持一致）
+    const PRESETS = {
+      deepseek: { name: '🔮 DeepSeek', api_url: 'https://api.deepseek.com/v1/chat/completions', model: 'deepseek-chat', desc: '性价比高，推荐', keyUrl: 'https://platform.deepseek.com/api_keys' },
+      minimax:  { name: '🤖 MiniMax', api_url: 'https://api.minimaxi.com/v1/chat/completions', model: 'MiniMax-M2.7', desc: '国产模型，长文本', keyUrl: 'https://platform.minimaxi.com/user-center/basic-information/interface-key' },
+      kimi:     { name: '🌙 Kimi', api_url: 'https://api.moonshot.cn/v1/chat/completions', model: 'moonshot-v1-8k', desc: '月之暗面，长文本', keyUrl: 'https://platform.moonshot.cn/console/api-keys' },
+      qwen:     { name: '☁️ 通义千问', api_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-plus', desc: '阿里云大模型', keyUrl: 'https://dashscope.console.aliyun.com/apiKey' },
+      glm:      { name: '🧠 智谱 GLM', api_url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: 'glm-4', desc: '清华智谱', keyUrl: 'https://open.bigmodel.cn/usercenter/apikeys' },
+      openai:   { name: '🤖 OpenAI', api_url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o', desc: '需海外 Key', keyUrl: 'https://platform.openai.com/api-keys' },
+      custom:   { name: '✏️ 自定义', api_url: '', model: '', desc: '手动填写', keyUrl: '' }
+    };
 
-    // 加载当前配置
+    let currentPreset = 'deepseek';
+
+    // 渲染预设卡片
+    function renderPresets() {
+      const grid = document.getElementById('presetGrid');
+      grid.innerHTML = '';
+      for (const [key, p] of Object.entries(PRESETS)) {
+        const card = document.createElement('div');
+        card.className = 'preset-card' + (key === 'custom' ? ' custom' : '') + (currentPreset === key ? ' active' : '');
+        card.dataset.key = key;
+        card.innerHTML = `
+          <div class="preset-name">${p.name}</div>
+          <div class="preset-desc">${p.desc}</div>
+          <div class="check-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+        `;
+        card.onclick = () => selectPreset(key);
+        grid.appendChild(card);
+      }
+    }
+
+    function selectPreset(key, updateFields = true) {
+      currentPreset = key;
+      document.querySelectorAll('.preset-card').forEach(el => el.classList.toggle('active', el.dataset.key === key));
+
+      const p = PRESETS[key];
+      if (updateFields) {
+        if (p.api_url) document.getElementById('apiUrl').value = p.api_url;
+        if (p.model) document.getElementById('model').value = p.model;
+      }
+
+      // 更新获取 Key 链接
+      const keyLink = document.getElementById('keyLink');
+      if (p.keyUrl) {
+        keyLink.href = p.keyUrl;
+        keyLink.style.display = '';
+      } else {
+        keyLink.style.display = 'none';
+      }
+    }
+
+    // 加载配置
     async function loadSettings() {
       try {
         const res = await fetch('/api/settings');
         const data = await res.json();
         if (data.success && data.settings) {
           const s = data.settings;
-          selectedModel = s.model_selection || 2;
-          selectModel(selectedModel, false);
+          currentPreset = s.preset || 'deepseek';
+          selectPreset(currentPreset, false);
 
-          document.getElementById('deepseekApiKey').value = s.deepseek_api_key || '';
-          document.getElementById('deepseekApiUrl').value = s.deepseek_api_url || 'https://api.deepseek.com/v1/chat/completions';
-          document.getElementById('minimaxApiKey').value = s.minimax_api_key || '';
-          document.getElementById('minimaxApiUrl').value = s.minimax_api_url || 'https://api.minimaxi.com/v1/chat/completions';
+          document.getElementById('apiKey').value = s.api_key || '';
+          document.getElementById('apiUrl').value = s.api_url || '';
+          document.getElementById('model').value = s.model || '';
 
-          updateStatus(s.api_key_configured);
+          updateStatus(s.is_configured);
+        } else {
+          // 首次使用，默认选中 deepseek
+          selectPreset('deepseek');
         }
       } catch (e) {
-        console.error('加载配置失败:', e);
+        selectPreset('deepseek');
       }
     }
 
-    function selectModel(model, animate = true) {
-      selectedModel = model;
-      document.querySelectorAll('.model-option').forEach(el => {
-        el.classList.toggle('active', el.dataset.model == model);
-      });
-      document.getElementById('deepseekConfig').style.display = model === 2 ? '' : 'none';
-      document.getElementById('minimaxConfig').style.display = model === 1 ? '' : 'none';
-      document.getElementById('currentModel').textContent = model === 2 ? '当前：DeepSeek V3' : '当前：MiniMax';
-    }
-
-    function updateStatus(configured) {
+    function updateStatus(ok) {
       const badge = document.getElementById('statusBadge');
       const text = document.getElementById('statusText');
-      if (configured) {
-        badge.className = 'status-badge configured';
-        text.textContent = '已配置';
-      } else {
-        badge.className = 'status-badge not-configured';
-        text.textContent = '未配置';
-      }
+      badge.className = 'status-badge ' + (ok ? 'ok' : 'no');
+      text.textContent = ok ? '已配置' : '未配置';
     }
 
     async function saveSettings() {
+      const apiKey = document.getElementById('apiKey').value.trim();
+      const apiUrl = document.getElementById('apiUrl').value.trim();
+      const model = document.getElementById('model').value.trim();
+
+      if (!apiKey) { showToast('❌ 请填写 API Key', 'error'); return; }
+      if (!apiUrl) { showToast('❌ 请填写 API 地址', 'error'); return; }
+      if (!model) { showToast('❌ 请填写模型名称', 'error'); return; }
+
       const btn = document.getElementById('saveBtn');
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner" style="width:18px;height:18px;border:2px solid transparent;border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite"></span> 保存中...';
-
-      const settings = {
-        model_selection: selectedModel,
-        deepseek_api_key: document.getElementById('deepseekApiKey').value.trim(),
-        deepseek_api_url: document.getElementById('deepseekApiUrl').value.trim() || 'https://api.deepseek.com/v1/chat/completions',
-        minimax_api_key: document.getElementById('minimaxApiKey').value.trim(),
-        minimax_api_url: document.getElementById('minimaxApiUrl').value.trim() || 'https://api.minimaxi.com/v1/chat/completions',
-      };
+      btn.innerHTML = '<span style="width:16px;height:16px;border:2px solid transparent;border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;display:inline-block;"></span> 保存中...';
 
       try {
         const res = await fetch('/api/settings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(settings)
+          body: JSON.stringify({
+            preset: currentPreset,
+            api_key: apiKey,
+            api_url: apiUrl,
+            model: model
+          })
         });
         const data = await res.json();
-
         if (data.success) {
-          showToast('✅ 配置保存成功！现在可以使用 ' + data.model_name + ' 生成教案了', 'success');
+          showToast('✅ ' + data.message, 'success');
           updateStatus(true);
         } else {
           showToast('❌ ' + (data.message || '保存失败'), 'error');
@@ -386,7 +317,7 @@
       }
 
       btn.disabled = false;
-      btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 保存配置';
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 保存配置';
     }
 
     function showToast(msg, type) {
@@ -396,11 +327,8 @@
       setTimeout(() => { toast.classList.remove('show'); }, 3000);
     }
 
-    // 页面加载
+    renderPresets();
     loadSettings();
   </script>
-  <style>
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
 </body>
 </html>

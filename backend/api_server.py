@@ -30,7 +30,7 @@ BASE_DIR = get_base_dir()
 sys.path.insert(0, BASE_DIR)
 
 from main import batch_generate_lesson_plans, generate_lesson_plan_doc
-from config import DEFAULT_FIXED_COURSE_INFO, save_settings_to_file, load_settings_from_file, reload_config, SETTINGS_FILE, get_current_model_config
+from config import DEFAULT_FIXED_COURSE_INFO, save_settings_to_file, load_settings_from_file, reload_config, SETTINGS_FILE, get_current_model_config, MODEL_PRESETS
 
 
 
@@ -602,23 +602,33 @@ def get_llm_settings():
     """获取当前 LLM 配置信息（不返回完整 API Key）"""
     try:
         settings = load_settings_from_file()
-        current_config = get_current_model_config() if 'get_current_model_config' in dir() else None
+        cfg = get_current_model_config()
 
         return jsonify({
             'success': True,
+            'presets': MODEL_PRESETS,
             'settings': {
-                'model_selection': settings.get('model_selection', 2),
-                'model_name': settings.get('model_selection', 2) == 1 and 'MiniMax' or 'DeepSeek V3',
-                'deepseek_api_key': mask_key(settings.get('deepseek_api_key', '')),
-                'deepseek_api_url': settings.get('deepseek_api_url', 'https://api.deepseek.com/v1/chat/completions'),
-                'minimax_api_key': mask_key(settings.get('minimax_api_key', '')),
-                'minimax_api_url': settings.get('minimax_api_url', 'https://api.minimaxi.com/v1/chat/completions'),
-                'is_configured': bool(settings.get('deepseek_api_key') or settings.get('minimax_api_key')),
-                'api_key_configured': bool(settings.get('deepseek_api_key') or settings.get('minimax_api_key'))
+                'preset': settings.get('preset', 'deepseek'),
+                'api_key': mask_key(cfg.get('api_key', '')),
+                'api_url': cfg.get('api_url', ''),
+                'model': cfg.get('model', ''),
+                'temperature': cfg.get('temperature', 0.7),
+                'max_tokens': cfg.get('max_tokens', 32000),
+                'is_configured': bool(cfg.get('api_key')),
+                'model_name': cfg.get('name', '')
             }
         })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/presets', methods=['GET'])
+def get_model_presets():
+    """获取预置模型列表"""
+    return jsonify({
+        'success': True,
+        'presets': MODEL_PRESETS
+    })
 
 
 @app.route('/api/settings', methods=['POST'])
@@ -629,27 +639,42 @@ def save_llm_settings():
         if not data:
             return jsonify({'success': False, 'message': '请提供配置参数'}), 400
 
-        settings = {
-            'model_selection': data.get('model_selection', 2),
-            'deepseek_api_key': data.get('deepseek_api_key', ''),
-            'deepseek_api_url': data.get('deepseek_api_url', 'https://api.deepseek.com/v1/chat/completions'),
-            'minimax_api_key': data.get('minimax_api_key', ''),
-            'minimax_api_url': data.get('minimax_api_url', 'https://api.minimaxi.com/v1/chat/completions'),
-        }
+        api_key = data.get('api_key', '').strip()
+        api_url = data.get('api_url', '').strip()
+        model = data.get('model', '').strip()
 
-        # 验证至少有一个 API Key
-        if not settings['deepseek_api_key'] and not settings['minimax_api_key']:
-            return jsonify({'success': False, 'message': '请至少填写一个模型的 API Key'}), 400
+        if not api_key:
+            return jsonify({'success': False, 'message': '请填写 API Key'}), 400
+        if not api_url:
+            return jsonify({'success': False, 'message': '请填写 API 地址'}), 400
+        if not model:
+            return jsonify({'success': False, 'message': '请填写模型名称'}), 400
+
+        settings = {
+            'preset': data.get('preset', 'custom'),
+            'api_key': api_key,
+            'api_url': api_url,
+            'model': model,
+            'temperature': data.get('temperature', 0.7),
+            'max_tokens': data.get('max_tokens', 32000),
+        }
 
         save_settings_to_file(settings)
         reload_config()
 
-        logging.info(f"LLM 配置已更新，当前使用: {'MiniMax' if settings['model_selection'] == 1 else 'DeepSeek V3'}")
+        # 尝试匹配预置名称
+        model_name = model
+        for key, preset in MODEL_PRESETS.items():
+            if preset['api_url'] == api_url:
+                model_name = preset['name']
+                break
+
+        logging.info(f"LLM 配置已更新: {model_name} @ {api_url}")
 
         return jsonify({
             'success': True,
-            'message': '配置保存成功',
-            'model_name': 'MiniMax' if settings['model_selection'] == 1 else 'DeepSeek V3'
+            'message': f'配置保存成功，当前使用: {model_name}',
+            'model_name': model_name
         })
     except Exception as e:
         logging.error(f"保存配置失败: {str(e)}")

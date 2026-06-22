@@ -70,6 +70,12 @@ lerna-debug.log*
 # User LLM settings (contains API keys)
 backend/llm_settings.json
 
+# PyInstaller extraction temp
+backend/LessonPlanGenerator.exe_extracted/
+backend/pyinstxtractor.py
+backend/main.py
+backend/main_decompiled.py
+
 # Session files
 backend/sessions/*.json
 
