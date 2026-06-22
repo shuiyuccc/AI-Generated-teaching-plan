@@ -30,7 +30,7 @@ BASE_DIR = get_base_dir()
 sys.path.insert(0, BASE_DIR)
 
 from main import batch_generate_lesson_plans, generate_lesson_plan_doc
-from config import DEFAULT_FIXED_COURSE_INFO
+from config import DEFAULT_FIXED_COURSE_INFO, save_settings_to_file, load_settings_from_file, reload_config, SETTINGS_FILE, get_current_model_config
 
 
 
@@ -174,18 +174,30 @@ def poll_logs(session_id):
 @app.route('/api/generate', methods=['POST'])
 def generate():
     session_id = request.headers.get('X-Session-ID', request.json.get('session_id', 'default'))
-    
+
     update_session(session_id, {
         'status': 'generating',
         'progress': 0,
         'results': []
     })
-    
+
     try:
         data = request.json
         if not data:
             update_session(session_id, {'status': 'error', 'error': '请提供生成参数'})
             return jsonify({'success': False, 'message': '请提供生成参数'}), 400
+
+        # 检查 API Key 是否已配置
+        from config import get_current_model_config
+        current_cfg = get_current_model_config()
+        if not current_cfg.get('api_key'):
+            update_session(session_id, {'status': 'error', 'error': 'api_key_missing'})
+            return jsonify({
+                'success': False,
+                'error_type': 'api_key_missing',
+                'message': f'请先配置 {current_cfg.get("name", "LLM")} API Key',
+                'setup_url': '/setup'
+            }), 401
 
         fixed_course_info = data.get('fixed_course_info', {})
         variable_course_info = data.get('variable_course_info', {})
@@ -253,7 +265,7 @@ def generate():
 @app.route('/api/batch-generate', methods=['POST'])
 def batch_generate():
     session_id = request.headers.get('X-Session-ID', request.json.get('session_id', 'default'))
-    
+
     update_session(session_id, {
         'status': 'generating',
         'progress': 0,
@@ -261,16 +273,28 @@ def batch_generate():
         'total_lessons': 0,
         'current_lesson': 0
     })
-    
+
     # 配置 jiaoan logger
     jiaoan_logger = logging.getLogger('jiaoan')
     jiaoan_logger.setLevel(logging.DEBUG)
-    
+
     try:
         data = request.json
         if not data:
             update_session(session_id, {'status': 'error', 'error': '请提供生成参数'})
             return jsonify({'success': False, 'message': '请提供生成参数'}), 400
+
+        # 检查 API Key 是否已配置
+        from config import get_current_model_config
+        current_cfg = get_current_model_config()
+        if not current_cfg.get('api_key'):
+            update_session(session_id, {'status': 'error', 'error': 'api_key_missing'})
+            return jsonify({
+                'success': False,
+                'error_type': 'api_key_missing',
+                'message': f'请先配置 {current_cfg.get("name", "LLM")} API Key',
+                'setup_url': '/setup'
+            }), 401
 
         fixed_course_info = data.get('fixed_course_info', {})
         variable_course_infos = data.get('variable_course_infos', [])
@@ -571,6 +595,83 @@ def upload_excel():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'解析失败: {str(e)}'}), 500
+
+
+@app.route('/api/settings', methods=['GET'])
+def get_llm_settings():
+    """获取当前 LLM 配置信息（不返回完整 API Key）"""
+    try:
+        settings = load_settings_from_file()
+        current_config = get_current_model_config() if 'get_current_model_config' in dir() else None
+
+        return jsonify({
+            'success': True,
+            'settings': {
+                'model_selection': settings.get('model_selection', 2),
+                'model_name': settings.get('model_selection', 2) == 1 and 'MiniMax' or 'DeepSeek V3',
+                'deepseek_api_key': mask_key(settings.get('deepseek_api_key', '')),
+                'deepseek_api_url': settings.get('deepseek_api_url', 'https://api.deepseek.com/v1/chat/completions'),
+                'minimax_api_key': mask_key(settings.get('minimax_api_key', '')),
+                'minimax_api_url': settings.get('minimax_api_url', 'https://api.minimaxi.com/v1/chat/completions'),
+                'is_configured': bool(settings.get('deepseek_api_key') or settings.get('minimax_api_key')),
+                'api_key_configured': bool(settings.get('deepseek_api_key') or settings.get('minimax_api_key'))
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/settings', methods=['POST'])
+def save_llm_settings():
+    """保存 LLM 配置"""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'message': '请提供配置参数'}), 400
+
+        settings = {
+            'model_selection': data.get('model_selection', 2),
+            'deepseek_api_key': data.get('deepseek_api_key', ''),
+            'deepseek_api_url': data.get('deepseek_api_url', 'https://api.deepseek.com/v1/chat/completions'),
+            'minimax_api_key': data.get('minimax_api_key', ''),
+            'minimax_api_url': data.get('minimax_api_url', 'https://api.minimaxi.com/v1/chat/completions'),
+        }
+
+        # 验证至少有一个 API Key
+        if not settings['deepseek_api_key'] and not settings['minimax_api_key']:
+            return jsonify({'success': False, 'message': '请至少填写一个模型的 API Key'}), 400
+
+        save_settings_to_file(settings)
+        reload_config()
+
+        logging.info(f"LLM 配置已更新，当前使用: {'MiniMax' if settings['model_selection'] == 1 else 'DeepSeek V3'}")
+
+        return jsonify({
+            'success': True,
+            'message': '配置保存成功',
+            'model_name': 'MiniMax' if settings['model_selection'] == 1 else 'DeepSeek V3'
+        })
+    except Exception as e:
+        logging.error(f"保存配置失败: {str(e)}")
+        return jsonify({'success': False, 'message': f'保存失败: {str(e)}'}), 500
+
+
+def mask_key(key):
+    """遮蔽 API Key 中间部分"""
+    if not key:
+        return ''
+    if len(key) <= 8:
+        return '*' * len(key)
+    return key[:4] + '*' * (len(key) - 8) + key[-4:]
+
+
+@app.route('/setup')
+def serve_setup_page():
+    """提供 LLM 配置页面"""
+    setup_path = os.path.join(STATIC_DIR, 'setup.html')
+    if os.path.exists(setup_path):
+        return send_from_directory(STATIC_DIR, 'setup.html')
+    return '<h1>设置页面未找到</h1>', 404
 
 
 @app.route('/health', methods=['GET'])

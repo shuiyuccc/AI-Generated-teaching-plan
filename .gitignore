@@ -67,6 +67,9 @@ lerna-debug.log*
 # PyInstaller
 *.spec
 
+# User LLM settings (contains API keys)
+backend/llm_settings.json
+
 # Session files
 backend/sessions/*.json
 

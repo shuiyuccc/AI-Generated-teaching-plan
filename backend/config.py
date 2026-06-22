@@ -1,30 +1,57 @@
 """
 配置文件 - 存放API密钥和其他配置
 支持多模型切换：1=MiniMax, 2=DeepSeek V3
+
+配置优先级：环境变量 > llm_settings.json > 内置默认值
+首次使用时会自动创建 llm_settings.json 模板文件
 """
 import os
-from dotenv import load_dotenv
+import json
 
-# 加载环境变量
-load_dotenv()
+# 加载环境变量（可选）
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+# ============================================
+# 从 JSON 文件加载用户配置
+# ============================================
+SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'llm_settings.json')
+
+def load_settings_from_file():
+    """从 llm_settings.json 加载用户保存的配置"""
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def save_settings_to_file(settings):
+    """保存配置到 llm_settings.json"""
+    with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(settings, f, ensure_ascii=False, indent=2)
+
+# 加载文件中的设置
+_file_settings = load_settings_from_file()
 
 # ============================================
 # 模型选择配置
 # 设置 MODEL_SELECTION = 1 使用 MiniMax
 # 设置 MODEL_SELECTION = 2 使用 DeepSeek V3
 # ============================================
-MODEL_SELECTION = 2  # 默认使用 DeepSeek V3
+MODEL_SELECTION = _file_settings.get('model_selection', 2)  # 默认 DeepSeek V3
 
 # ============================================
 # MiniMax 模型配置 (MODEL_SELECTION = 1)
 # ============================================
-# MiniMax 使用标准 OpenAI 兼容接口
-# API文档: https://platform.minimaxi.com/docs/api-reference/text-chat-completions
-# 支持模型: MiniMax-M2.7, MiniMax-M1, MiniMax-Text-01
 MINIMAX_CONFIG = {
-    "api_key": os.getenv("MINIMAX_API_KEY", ""),  # 请在 .env 文件中设置 MINIMAX_API_KEY
-    "api_url": os.getenv("MINIMAX_API_URL", "https://api.minimaxi.com/v1/chat/completions"),  # MiniMax 官方 API 地址
-    "model": "MiniMax-M2.7",  # MiniMax 2.7 模型
+    "api_key": os.getenv("MINIMAX_API_KEY", _file_settings.get('minimax_api_key', '')),
+    "api_url": os.getenv("MINIMAX_API_URL", _file_settings.get('minimax_api_url', 'https://api.minimaxi.com/v1/chat/completions')),
+    "model": "MiniMax-M2.7",
     "temperature": 0.7,
     "max_tokens": 32000,
     "stream": False
@@ -34,9 +61,9 @@ MINIMAX_CONFIG = {
 # DeepSeek V3 模型配置 (MODEL_SELECTION = 2)
 # ============================================
 DEEPSEEK_CONFIG = {
-    "api_key": os.getenv("DEEPSEEK_API_KEY", ""),  # 请在 .env 文件中设置 DEEPSEEK_API_KEY
-    "api_url": os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/v1/chat/completions"),
-    "model": "deepseek-chat",  # DeepSeek V3 模型
+    "api_key": os.getenv("DEEPSEEK_API_KEY", _file_settings.get('deepseek_api_key', '')),
+    "api_url": os.getenv("DEEPSEEK_API_URL", _file_settings.get('deepseek_api_url', 'https://api.deepseek.com/v1/chat/completions')),
+    "model": "deepseek-chat",
     "temperature": 0.7,
     "max_tokens": 32000,
     "stream": False
@@ -67,6 +94,28 @@ def get_current_model_config():
             "max_tokens": DEEPSEEK_CONFIG["max_tokens"],
             "stream": DEEPSEEK_CONFIG["stream"]
         }
+
+def reload_config():
+    """重新加载配置文件（修改设置后调用）"""
+    global MODEL_SELECTION, MINIMAX_CONFIG, DEEPSEEK_CONFIG, LLM_API_KEY, LLM_API_URL, MODEL_CONFIG
+    settings = load_settings_from_file()
+    MODEL_SELECTION = settings.get('model_selection', 2)
+
+    MINIMAX_CONFIG["api_key"] = os.getenv("MINIMAX_API_KEY", settings.get('minimax_api_key', ''))
+    MINIMAX_CONFIG["api_url"] = os.getenv("MINIMAX_API_URL", settings.get('minimax_api_url', 'https://api.minimaxi.com/v1/chat/completions'))
+
+    DEEPSEEK_CONFIG["api_key"] = os.getenv("DEEPSEEK_API_KEY", settings.get('deepseek_api_key', ''))
+    DEEPSEEK_CONFIG["api_url"] = os.getenv("DEEPSEEK_API_URL", settings.get('deepseek_api_url', 'https://api.deepseek.com/v1/chat/completions'))
+
+    cfg = get_current_model_config()
+    LLM_API_KEY = cfg["api_key"]
+    LLM_API_URL = cfg["api_url"]
+    MODEL_CONFIG = {
+        "model": cfg["model"],
+        "temperature": cfg["temperature"],
+        "max_tokens": cfg["max_tokens"],
+        "stream": cfg["stream"]
+    }
 
 # 兼容旧配置的别名
 LLM_API_KEY = get_current_model_config()["api_key"]
