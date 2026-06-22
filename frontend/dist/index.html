@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
@@ -7,8 +7,74 @@
     <title>教案生成系统</title>
     <script type="module" crossorigin src="/assets/index-Bz_5Z9rK.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BAKlpWLh.css">
+    <style>
+      /* 大模型配置按钮 */
+      .llm-config-btn {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 48px;
+        height: 48px;
+        background: #007aff;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        z-index: 9999;
+        box-shadow: 0 4px 16px rgba(0,122,255,.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all .2s ease;
+      }
+      .llm-config-btn:hover {
+        transform: scale(1.08);
+        box-shadow: 0 6px 24px rgba(0,122,255,.5);
+      }
+      .llm-config-btn:active {
+        transform: scale(.95);
+      }
+      .llm-config-btn svg {
+        width: 22px;
+        height: 22px;
+        color: #fff;
+        transition: transform .3s ease;
+      }
+      .llm-config-btn:hover svg {
+        transform: rotate(60deg);
+      }
+      .llm-config-tooltip {
+        position: fixed;
+        bottom: 80px;
+        right: 24px;
+        background: #1c1c1e;
+        color: #fff;
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+        pointer-events: none;
+        opacity: 0;
+        transform: translateY(4px);
+        transition: all .2s ease;
+        white-space: nowrap;
+        z-index: 9999;
+      }
+      .llm-config-btn:hover + .llm-config-tooltip {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- 大模型配置按钮 -->
+    <button class="llm-config-btn" onclick="location.href='/setup'" title="大模型配置">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+    <div class="llm-config-tooltip">大模型配置</div>
   </body>
 </html>
