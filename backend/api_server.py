@@ -31,6 +31,7 @@ sys.path.insert(0, BASE_DIR)
 
 from main import batch_generate_lesson_plans, generate_lesson_plan_doc
 from config import DEFAULT_FIXED_COURSE_INFO, save_settings_to_file, load_settings_from_file, reload_config, SETTINGS_FILE, get_current_model_config, MODEL_PRESETS
+from template_manager import analyze_template, save_template_info, get_template_info, fill_template_dynamic, build_prompt_from_template
 
 
 
@@ -74,6 +75,70 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 generation_sessions = {}
 sessions_lock = threading.Lock()
+
+
+def _generate_with_template(template_info, output_path, course_info):
+    """使用用户上传的模板生成教案"""
+    import requests
+    from config import get_current_model_config
+
+    cfg = get_current_model_config()
+    if not cfg.get("api_key"):
+        return "invalid_api_key"
+
+    try:
+        structure = template_info['structure']
+        template_path = template_info['path']
+
+        # 根据模板结构构建提示词
+        prompt = build_prompt_from_template(course_info, structure)
+
+        # 调用 LLM
+        headers = {
+            "Authorization": f"Bearer {cfg['api_key']}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": cfg['model'],
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": cfg.get('temperature', 0.7),
+            "max_tokens": cfg.get('max_tokens', 32000),
+            "stream": False
+        }
+
+        logging.info(f"正在调用 LLM: {cfg['name']} @ {cfg['api_url']}")
+        resp = requests.post(cfg['api_url'], headers=headers, json=payload, timeout=120)
+
+        if resp.status_code != 200:
+            logging.error(f"LLM 调用失败: {resp.status_code} {resp.text[:300]}")
+            return False
+
+        content = resp.json()['choices'][0]['message']['content']
+
+        # 提取 JSON
+        if '```json' in content:
+            content = content.split('```json')[1].split('```')[0]
+        elif '```' in content:
+            content = content.split('```')[1].split('```')[0]
+
+        try:
+            llm_data = json.loads(content.strip())
+        except json.JSONDecodeError:
+            logging.error(f"JSON 解析失败: {content[:500]}")
+            return False
+
+        # 动态填充模板
+        fill_template_dynamic(template_path, output_path, llm_data, course_info, structure)
+
+        if os.path.exists(output_path):
+            return True
+        return False
+
+    except Exception as e:
+        logging.error(f"模板生成失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 
 def save_session_to_file(session_id, session_data):
@@ -226,13 +291,23 @@ def generate():
 
         update_session(session_id, {'progress': 20, 'current_topic': topic})
 
-        template_path = os.path.join(BASE_DIR, 'moban.docx')
-        success = generate_lesson_plan_doc(
-            template_path=template_path,
-            output_path=output_path,
-            course_info=course_info,
-            use_mock=False
-        )
+        # 优先使用用户上传的模板
+        user_template = get_template_info(session_id)
+
+        if user_template:
+            success = _generate_with_template(
+                template_info=user_template,
+                output_path=output_path,
+                course_info=course_info
+            )
+        else:
+            template_path = os.path.join(BASE_DIR, 'moban.docx')
+            success = generate_lesson_plan_doc(
+                template_path=template_path,
+                output_path=output_path,
+                course_info=course_info,
+                use_mock=False
+            )
 
         if success == "invalid_api_key":
             update_session(session_id, {'status': 'error', 'error_type': 'invalid_api_key'})
@@ -348,14 +423,24 @@ def batch_generate():
             course_info = {**complete_fixed_info, **lesson}
             
             logging.info("📝 正在调用 AI 生成教案内容...")
-            
-            template_path = os.path.join(BASE_DIR, 'moban.docx')
-            success = generate_lesson_plan_doc(
-                template_path=template_path,
-                output_path=output_path,
-                course_info=course_info,
-                use_mock=False
-            )
+
+            # 优先使用用户上传的模板
+            user_template = get_template_info(session_id)
+
+            if user_template:
+                success = _generate_with_template(
+                    template_info=user_template,
+                    output_path=output_path,
+                    course_info=course_info
+                )
+            else:
+                template_path = os.path.join(BASE_DIR, 'moban.docx')
+                success = generate_lesson_plan_doc(
+                    template_path=template_path,
+                    output_path=output_path,
+                    course_info=course_info,
+                    use_mock=False
+                )
             
             if success and os.path.exists(output_path):
                 results.append({
@@ -697,6 +782,64 @@ def serve_setup_page():
     if os.path.exists(setup_path):
         return send_from_directory(STATIC_DIR, 'setup.html')
     return '<h1>设置页面未找到</h1>', 404
+
+
+@app.route('/api/upload-template', methods=['POST'])
+def upload_template():
+    """上传自定义教案模板"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': '请上传 .docx 格式的教案模板'}), 400
+
+        file = request.files['file']
+        session_id = request.form.get('session_id', 'default')
+
+        if not file.filename.endswith('.docx'):
+            return jsonify({'success': False, 'message': '只支持 .docx 格式的 Word 文档'}), 400
+
+        # 保存模板
+        template_dir = os.path.join(DATA_DIR, 'templates')
+        os.makedirs(template_dir, exist_ok=True)
+        template_path = os.path.join(template_dir, f'{session_id}_{file.filename}')
+        file.save(template_path)
+
+        # 分析模板结构
+        structure = analyze_template(template_path)
+        save_template_info(session_id, template_path, structure)
+
+        return jsonify({
+            'success': True,
+            'message': f'模板上传成功，识别到 {len(structure["all_labels"])} 个填写区域',
+            'filename': file.filename,
+            'structure_summary': {
+                'basic_info_count': len(structure['basic_info']),
+                'detail_info_count': len(structure['detail_info']),
+                'section_count': len(structure['sections']),
+                'has_teaching_table': bool(structure['teaching_steps_table']),
+                'labels': structure['all_labels'][:20]
+            }
+        })
+    except Exception as e:
+        logging.error(f"模板上传失败: {e}")
+        return jsonify({'success': False, 'message': f'模板上传失败: {str(e)}'}), 500
+
+
+@app.route('/api/template-info/<session_id>', methods=['GET'])
+def get_template_info_api(session_id):
+    """获取已上传的模板信息"""
+    info = get_template_info(session_id)
+    if not info:
+        return jsonify({'success': False, 'message': '未上传模板，使用默认模板'})
+    return jsonify({
+        'success': True,
+        'filename': info['filename'],
+        'structure': {
+            'basic_info_labels': [e['label'] for e in info['structure']['basic_info']],
+            'detail_info_labels': [e['label'] for e in info['structure']['detail_info']],
+            'sections': [e['label'] for e in info['structure']['sections']],
+            'has_teaching_table': bool(info['structure']['teaching_steps_table'])
+        }
+    })
 
 
 @app.route('/health', methods=['GET'])

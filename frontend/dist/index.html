@@ -8,73 +8,124 @@
     <script type="module" crossorigin src="/assets/index-Bz_5Z9rK.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BAKlpWLh.css">
     <style>
-      /* 大模型配置按钮 */
-      .llm-config-btn {
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        width: 48px;
-        height: 48px;
-        background: #007aff;
-        border: none;
-        border-radius: 50%;
-        cursor: pointer;
-        z-index: 9999;
-        box-shadow: 0 4px 16px rgba(0,122,255,.35);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all .2s ease;
+      .float-btns { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 12px; z-index: 9999; }
+      .float-btn {
+        width: 48px; height: 48px; border: none; border-radius: 50%;
+        cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,.15);
+        display: flex; align-items: center; justify-content: center;
+        transition: all .2s ease; position: relative;
       }
-      .llm-config-btn:hover {
-        transform: scale(1.08);
-        box-shadow: 0 6px 24px rgba(0,122,255,.5);
+      .float-btn:hover { transform: scale(1.08); }
+      .float-btn:active { transform: scale(.95); }
+      .float-btn svg { width: 22px; height: 22px; color: #fff; transition: transform .3s ease; }
+      .float-btn:hover svg { transform: rotate(15deg); }
+      .float-btn.config { background: #007aff; box-shadow: 0 4px 16px rgba(0,122,255,.35); }
+      .float-btn.config:hover { box-shadow: 0 6px 24px rgba(0,122,255,.5); }
+      .float-btn.template { background: #34c759; box-shadow: 0 4px 16px rgba(52,199,89,.35); }
+      .float-btn.template:hover { box-shadow: 0 6px 24px rgba(52,199,89,.5); }
+      .float-btn.template.has-template { background: #30b350; }
+      .float-tooltip {
+        position: absolute; right: 58px; top: 50%; transform: translateY(-50%);
+        background: #1c1c1e; color: #fff; padding: 8px 14px; border-radius: 8px;
+        font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+        pointer-events: none; opacity: 0; transition: all .2s ease; white-space: nowrap;
       }
-      .llm-config-btn:active {
-        transform: scale(.95);
-      }
-      .llm-config-btn svg {
-        width: 22px;
-        height: 22px;
-        color: #fff;
-        transition: transform .3s ease;
-      }
-      .llm-config-btn:hover svg {
-        transform: rotate(60deg);
-      }
-      .llm-config-tooltip {
-        position: fixed;
-        bottom: 80px;
-        right: 24px;
-        background: #1c1c1e;
-        color: #fff;
-        padding: 8px 14px;
-        border-radius: 8px;
-        font-size: 13px;
+      .float-btn:hover .float-tooltip { opacity: 1; }
+      .template-toast {
+        position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+        padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: 500;
         font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
-        pointer-events: none;
-        opacity: 0;
-        transform: translateY(4px);
-        transition: all .2s ease;
-        white-space: nowrap;
-        z-index: 9999;
+        z-index: 9999; opacity: 0; transition: all .3s ease; pointer-events: none;
       }
-      .llm-config-btn:hover + .llm-config-tooltip {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      .template-toast.show { opacity: 1; }
+      .template-toast.success { background: #34c759; color: #fff; }
+      .template-toast.error { background: #ff3b30; color: #fff; }
+      .template-toast.info { background: #48484a; color: #fff; }
     </style>
   </head>
   <body>
     <div id="root"></div>
 
-    <!-- 大模型配置按钮 -->
-    <button class="llm-config-btn" onclick="location.href='/setup'" title="大模型配置">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-      </svg>
-    </button>
-    <div class="llm-config-tooltip">大模型配置</div>
+    <!-- 浮动按钮组 -->
+    <div class="float-btns">
+      <!-- 上传教案模板 -->
+      <button class="float-btn template" id="templateBtn" onclick="document.getElementById('templateInput').click()" title="上传教案模板">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <line x1="9" y1="15" x2="12" y2="12"/>
+          <line x1="15" y1="15" x2="12" y2="12"/>
+        </svg>
+        <span class="float-tooltip" id="templateTooltip">上传教案模板</span>
+      </button>
+
+      <!-- 大模型配置 -->
+      <button class="float-btn config" onclick="location.href='/setup'" title="大模型配置">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span class="float-tooltip">大模型配置</span>
+      </button>
+    </div>
+
+    <!-- 隐藏的文件上传 -->
+    <input type="file" id="templateInput" accept=".docx" style="display:none" onchange="uploadTemplate(this)" />
+
+    <div class="template-toast" id="templateToast"></div>
+
+    <script>
+      const SESSION_ID = 'main-' + Date.now();
+
+      async function uploadTemplate(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        showToast('正在分析模板结构...', 'info');
+
+        const form = new FormData();
+        form.append('file', file);
+        form.append('session_id', SESSION_ID);
+
+        try {
+          const res = await fetch('/api/upload-template', { method: 'POST', body: form });
+          const data = await res.json();
+
+          if (data.success) {
+            document.getElementById('templateBtn').classList.add('has-template');
+            document.getElementById('templateTooltip').textContent = '已上传: ' + file.name;
+            showToast('✅ ' + data.message, 'success');
+          } else {
+            showToast('❌ ' + (data.message || '上传失败'), 'error');
+          }
+        } catch (e) {
+          showToast('❌ 上传失败，请检查后端服务', 'error');
+        }
+
+        input.value = '';
+      }
+
+      async function checkTemplate() {
+        try {
+          const res = await fetch('/api/template-info/' + SESSION_ID);
+          const data = await res.json();
+          if (data.success) {
+            document.getElementById('templateBtn').classList.add('has-template');
+            document.getElementById('templateTooltip').textContent = '已上传模板: ' + data.filename;
+          }
+        } catch (e) {}
+      }
+
+      function showToast(msg, type) {
+        const toast = document.getElementById('templateToast');
+        toast.textContent = msg;
+        toast.className = 'template-toast ' + type + ' show';
+        setTimeout(() => { toast.classList.remove('show'); }, 3000);
+      }
+
+      // 页面加载时检查是否已有模板
+      checkTemplate();
+    </script>
   </body>
 </html>
